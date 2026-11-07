@@ -57,6 +57,8 @@ workflow. It only runs on a schedule once it is on `main`.
   `local-design` is opened, assigned to `jwang-hpc` with a review request, so
   GitHub emails you. **Merge to approve, close to reject.** Check the ID and
   venue abbreviation before merging.
+- Each run first deletes `scholar/…` branches whose pull request is no longer open
+  (merged or closed), so they don't pile up.
 - Papers that could not be verified are listed (in the PR or in an issue) for
   manual entry. Add titles to `.github/scholar-ignore.txt` to stop proposing them.
 - Google Scholar blocks requests from GitHub's servers (HTTP 403). The script then

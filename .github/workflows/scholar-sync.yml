@@ -29,6 +29,17 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
+      - name: Delete finished scholar/ branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A scholar/ branch with no open pull request was either merged (approved) or closed (rejected).
+          open=$(gh pr list --state open --json headRefName --jq '.[].headRefName')
+          for branch in $(git ls-remote --heads origin 'scholar/*' | sed 's|.*refs/heads/||'); do
+            if ! grep -qxF "$branch" <<< "$open"; then
+              git push origin --delete "$branch" && echo "Deleted $branch"
+            fi
+          done
       - name: Compare Google Scholar with content/publications.json
         id: scholar
         env:
