@@ -12,6 +12,8 @@ body main p,body .bio p,body main li,body main time{line-height:var(--d-line-hei
 body p{margin-bottom:var(--d-paragraph-gap)}
 body main p,body main li,body main time,body nav a,body .paper-links,body .paper-links a,body .citation summary,body .citation pre,body .copy-citation,body .profile-button,body .contact-chip,body .contact-chips a,body .contact-chips span,body .resource-buttons a,body .venue,body .paper-venue,body .profile-links,body .contact,body .affiliation,body .role,body .identity span,body .theme-toggle,body .menu-toggle,body .site-footer,body .site-footer p,body .site-footer address{font-size:var(--d-body-size)!important}
 body .paper-venue,body .venue{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+/* Safety net: an unusually long venue label wraps within ~10em instead of squeezing the paper column. */
+body .paper-venue,body .venue{max-width:calc(var(--d-body-size)*10);white-space:normal;overflow-wrap:normal;word-break:normal}
 body .paper,body .pub{grid-template-columns:minmax(calc(var(--d-body-size)*8),max-content) minmax(0,1fr)}
 body .news-item,body .news li{grid-template-columns:calc(var(--d-body-size)*5.6) minmax(0,1fr)}
 body main span,body main small,body main label,body main input,body main select,body main button,body main figcaption{font-size:var(--d-body-size)!important}
@@ -151,3 +153,18 @@ body .cv-dialog-header{display:flex;align-items:center;justify-content:space-bet
 body .cv-dialog-header h2{margin:0;font-size:var(--d-body-size)}
 body .cv-dialog-header button{background:transparent;border:0;color:var(--ink);font-size:28px;cursor:pointer;width:40px;height:40px}
 body .cv-dialog iframe{width:100%;flex:1;border:0;min-height:0;background:#fff}
+
+/* Lab page: hide project collaborators and context lines (formerly assistant-design.css). */
+.project .collaborators,
+.portfolio-card .collaborators,
+.project-card .collaborators,
+[class*="project"] .collaborators{
+  display:none !important;
+}
+.portfolio-card .portfolio-context,
+.project .project-subtitle,
+.project .project-context,
+.project-card .project-context,
+[class*="project"] .project-context{
+  display:none !important;
+}

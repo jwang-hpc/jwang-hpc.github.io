@@ -11,9 +11,6 @@ __pycache__/
 venv/
 env/
 
-# Local content-editor state and backups
-.editor-state/
-
 # ChatGPT Sites hosting metadata (not required for GitHub Pages)
 .openai/
 

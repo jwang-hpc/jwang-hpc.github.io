@@ -1,0 +1,114 @@
+name: Check Google Scholar for new publications
+# Runs every four months (Jan 1, May 1, Sep 1) and on demand from the Actions tab.
+# Scheduled runs only fire from the default branch, so this takes effect once merged to main.
+# Verified additions open a pull request into local-design, assigned to the owner for approval
+# (GitHub emails the review request). Nothing is published until that PR is merged and
+# local-design is merged into main.
+on:
+  schedule:
+    - cron: '37 14 1 1,5,9 *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: scholar-sync
+  cancel-in-progress: false
+env:
+  OWNER: jwang-hpc
+  BASE: local-design
+  SMTP_CONFIGURED: ${{ secrets.SMTP_HOST != '' }}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: local-design
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+      - name: Compare Google Scholar with content/publications.json
+        id: scholar
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+        run: python3 scripts/scholar_sync.py --report "$RUNNER_TEMP/report.md"
+      - name: Check the site still builds
+        if: steps.scholar.outputs.added != '0'
+        run: |
+          python3 build.py
+          python3 scripts/check_site.py
+      - name: Open a pull request for approval
+        id: pr
+        if: steps.scholar.outputs.added != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADDED: ${{ steps.scholar.outputs.added }}
+        run: |
+          branch="scholar/$(date -u +%Y-%m-%d)-${{ github.run_id }}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add content/publications.json
+          git commit -m "Add $ADDED publication(s) found on Google Scholar"
+          git push origin "$branch"
+          {
+            echo "@$OWNER — the scheduled Google Scholar check found **$ADDED new publication(s)**. Please verify them."
+            echo
+            echo "**To approve:** review the diff, edit anything that needs fixing (for example the ID or venue abbreviation), then merge this PR into \`$BASE\`. Merge \`$BASE\` into \`main\` to publish."
+            echo "**To reject:** close this PR. To stop a paper coming back, add its title to \`.github/scholar-ignore.txt\`."
+            echo
+            cat "$RUNNER_TEMP/report.md"
+          } > "$RUNNER_TEMP/body.md"
+          # Supersede any earlier scholar PR that was never merged, so only one is open.
+          for old in $(gh pr list --base "$BASE" --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("scholar/")) | .number'); do
+            gh pr close "$old" --delete-branch --comment "Superseded by a newer Google Scholar check."
+          done
+          if url=$(gh pr create --base "$BASE" --head "$branch" --title "Google Scholar: $ADDED new publication(s) to verify" --body-file "$RUNNER_TEMP/body.md" --assignee "$OWNER" --reviewer "$OWNER"); then
+            echo "url=$url" >> "$GITHUB_OUTPUT"
+          else
+            # Repository setting "Allow GitHub Actions to create and approve pull requests" is off: fall back to an issue.
+            compare="${{ github.server_url }}/${{ github.repository }}/compare/$BASE...$branch?expand=1"
+            printf '\n**Open the pull request:** %s\n' "$compare" >> "$RUNNER_TEMP/body.md"
+            url=$(gh issue create --title "Google Scholar: $ADDED new publication(s) to verify" --body-file "$RUNNER_TEMP/body.md" --assignee "$OWNER")
+            echo "url=$url" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Approval request: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Open an issue for papers needing manual entry
+        if: steps.scholar.outputs.added == '0' && steps.scholar.outputs.manual != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Google Scholar: papers that need manual entry"
+          { echo "@$OWNER — these Google Scholar entries could not be verified automatically."; echo; cat "$RUNNER_TEMP/report.md"; } > "$RUNNER_TEMP/body.md"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then gh issue comment "$existing" --body-file "$RUNNER_TEMP/body.md"
+          else gh issue create --title "$title" --body-file "$RUNNER_TEMP/body.md" --assignee "$OWNER"; fi
+      - name: Email the approval request (optional)
+        if: steps.pr.outputs.url != '' && env.SMTP_CONFIGURED == 'true'
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          URL: ${{ steps.pr.outputs.url }}
+          ADDED: ${{ steps.scholar.outputs.added }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib
+          from email.message import EmailMessage
+          from pathlib import Path
+          message = EmailMessage()
+          message['Subject'] = f"Website: verify {os.environ['ADDED']} new publication(s) from Google Scholar"
+          message['From'] = os.environ['SMTP_USERNAME']
+          message['To'] = os.environ['NOTIFY_EMAIL'] or os.environ['SMTP_USERNAME']
+          report = Path(os.environ['RUNNER_TEMP'], 'report.md').read_text()
+          message.set_content(f"Please verify and approve the new publications:\n{os.environ['URL']}\n\nMerge to approve, close to reject.\n\n{report}")
+          with smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT'] or 587), timeout=30) as smtp:
+              smtp.starttls()
+              smtp.login(os.environ['SMTP_USERNAME'], os.environ['SMTP_PASSWORD'])
+              smtp.send_message(message)
+          print('Sent approval email.')
+          PY
