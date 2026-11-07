@@ -15,7 +15,7 @@ def read(name):
 
 pubs=read('publications'); seen=set()
 settings=read('site')
-if settings.get('font') not in ['optima','source-sans','inter','plex','serif','palatino']: fail('Unknown default font preset')
+if settings.get('font') not in ['google-sans','optima','source-sans','inter','plex','serif','palatino']: fail('Unknown default font preset')
 for item in settings.get('navigation',[]):
     if item.get('kind') not in ['section','page'] or not item.get('label') or not item.get('target'): fail(f'Invalid navigation item: {item}')
 for p in pubs:

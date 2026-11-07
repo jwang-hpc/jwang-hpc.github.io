@@ -12,6 +12,8 @@ FONTS = {
     'inter': 'Inter,Arial,sans-serif',
     'plex': "'IBM Plex Sans',Arial,sans-serif",
     'source-serif': "'Source Serif 4',Georgia,serif",
+    'google-sans': "'Google Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",
+    'system': "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",
 }
 
 def control(key, label, default, minimum=None, maximum=None, step=1, choices=None, labels=None, unit='px'):
@@ -23,7 +25,7 @@ def control(key, label, default, minimum=None, maximum=None, step=1, choices=Non
     return result
 
 FONT_CHOICES = list(FONTS)
-FONT_LABELS = ['Optima (system font)', 'TeX Gyre Pagella / Palatino', 'Source Sans 3', 'Inter', 'IBM Plex Sans', 'Source Serif 4']
+FONT_LABELS = ['Optima (system font)', 'TeX Gyre Pagella / Palatino', 'Source Sans 3', 'Inter', 'IBM Plex Sans', 'Source Serif 4', 'Google Sans (display)', 'System UI sans-serif']
 GROUPS = [
     dict(key='typography', label='Typography', fields=[
         control('body_font', 'Body typeface', 'palatino', choices=FONT_CHOICES, labels=FONT_LABELS),

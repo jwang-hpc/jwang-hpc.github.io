@@ -2,7 +2,7 @@
 
 from .design import GROUPS
 
-CONTENT_NAMES = ('profile', 'news', 'publications', 'teaching', 'projects', 'people', 'lab', 'site', 'design')
+CONTENT_NAMES = ('profile', 'gallery', 'news', 'publications', 'teaching', 'projects', 'people', 'lab', 'site', 'design')
 
 
 def field(key, label, kind='text', required=False, **options):
@@ -23,6 +23,7 @@ SECTIONS = [
         field('scholar', 'Google Scholar', 'url', True), field('cv', 'Curriculum vitae (PDF)', 'pdf', True),
         field('github', 'Lab GitHub', 'url', True), field('site_url', 'Personal site URL', 'url', True),
     ]),
+    dict(key='gallery', label='Gallery', path=['gallery'], list=True, fields=[field('caption', 'Caption', required=True), field('date', 'Month', 'month', True), field('event', 'Event'), field('members', 'Featured members'), field('alt', 'Photo description (alt text)', required=True), field('image', 'Photo', 'photo', True)]),
     dict(key='news', label='News', path=['news'], list=True, fields=[
         field('date', 'Month', 'month', True), field('kind', 'Category', required=True),
         field('text', 'Announcement', 'richtext', True), field('url', 'Link', 'url'),

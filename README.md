@@ -148,3 +148,13 @@ The file is saved as assets/papers/<record-id>.pdf and replaces the Paper link,
 while preserving DOI and other links. Preview and Save or Publish to apply the
 link; Publish includes uploaded PDFs on local-design. Existing PDFs are backed
 up before replacement. External paper URLs remain supported.
+
+### Lab Gallery
+The lab header links to gallery.html: a photo grid with year/event filters and
+a keyboard-accessible larger photo viewer. In the local editor choose Gallery,
+add an entry, upload a JPEG/PNG/WebP (up to 10 MB), and enter caption, month,
+event, member names and alt text. Uploads are converted to JPEG, stripped of
+original metadata and resized to at most 2000 pixels on the longest side.
+Files are stored in assets/gallery/ and included in content publishing to
+local-design. Preview uses the real page. Removing an entry hides its photo;
+the source asset is retained so removal does not discard the original upload.

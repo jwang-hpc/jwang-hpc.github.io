@@ -21,7 +21,7 @@ class DesignXMLTests(unittest.TestCase):
 
     def test_round_trip_for_supported_fonts(self):
         self.assertEqual(from_xml(self.xml), self.design)
-        for font in ('palatino', 'optima'):
+        for font in ('palatino', 'optima', 'google-sans', 'system'):
             expected = copy.deepcopy(self.design)
             expected['typography'].update(body_font=font, heading_font=font)
             self.assertEqual(from_xml(to_xml(expected)), expected)
@@ -35,7 +35,7 @@ class DesignXMLTests(unittest.TestCase):
             self.xml.replace('body-size="16"', 'body-size="15"'),
             self.xml.replace('body-size="16"', 'body-size="16px"'),
             self.xml.replace('line-height="1.6"', 'line-height="NaN"'),
-            self.xml.replace('body-font="optima"', 'body-font="arbitrary"'),
+            self.xml.replace('body-font="system"', 'body-font="arbitrary"'),
             self.xml.replace('<website-design version="1">', '<website-design version="1"><script/>'),
             self.xml.replace('  <layout', '  <layout extra="value"'),
             self.xml.replace('<website-design version="1">', '<website-design version="1">text'),

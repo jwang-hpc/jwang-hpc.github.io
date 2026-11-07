@@ -9,6 +9,8 @@ These font files are self-hosted. Visitors make no requests to a third-party fon
 
 Retrieved October 9, 2026. No glyphs were removed. Original names and copyright metadata are preserved. The corresponding SIL Open Font License texts are included in this directory.
 
+Google Sans: Fontsource `@fontsource/google-sans` 5.3.2 (npm), files `google-sans-latin-400-normal.woff2` (SHA-256 `2634df0d79333ea639d7079f566163bb700a57783d3a8f09061c6b11a8a78bcb`) and `google-sans-latin-ext-400-normal.woff2` (SHA-256 `9983057d2f73ea81748cfb9ba24a811c4bcc1d2c5bd479e779209706e5c13692`), retained as supplied. Retrieved November 7, 2026. Used for headings at weight 400, matching the funding tracker. License: `GoogleSans-OFL.txt` (SIL Open Font License 1.1).
+
 Official project references: https://rsms.me/inter/ , https://github.com/adobe-fonts/source-sans , https://github.com/IBM/plex , https://github.com/adobe-fonts/source-serif .
 
 ## Chinese name fallback

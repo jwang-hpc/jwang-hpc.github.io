@@ -36,6 +36,7 @@
             break;
           default:
             if (typeof value !== 'string' || value.length > 20000) errors.push(`${name}: invalid text.`);
+            else if (field.type === 'photo' && !/^assets\/gallery\/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.jpg$/.test(value)) errors.push(`${name}: upload a photo.`);
             else if (field.type === 'paperurl' && !validURL(value) && !/^assets\/papers\/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.pdf$/.test(value)) errors.push(`${name}: use an http(s) URL or upload a paper PDF.`);
             else if (field.type === 'pdf' && value !== 'assets/cv/jinzhen-wang.pdf' && !validURL(value)) errors.push(`${name}: upload a PDF.`);
             else if (field.type === 'url' && !validURL(value)) errors.push(`${name}: use a complete http(s) URL.`);
@@ -53,7 +54,7 @@
         else value.forEach((record, i) => fields(record, section.fields, `${section.label} ${i + 1}`));
       } else fields(value, section.fields, section.label);
     }
-    for (const name of ['publications', 'projects']) {
+    for (const name of ['publications', 'projects', 'gallery']) {
       const ids = new Set();
       for (const record of Array.isArray(data[name]) ? data[name] : []) {
         const id = record?.id;
@@ -74,7 +75,8 @@
       if (field.store) continue;
       record[field.key] = field.type === 'checkbox' ? false : field.type === 'number' ? new Date().getFullYear() : ['records', 'lines', 'paragraphs'].includes(field.type) ? [] : field.type === 'select' ? field.choices[0] : '';
     }
-    if (['publications', 'projects'].includes(section.key)) record.id = `${section.key === 'publications' ? 'paper' : 'project'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (['publications', 'projects', 'gallery'].includes(section.key)) record.id = `${section.key === 'publications' ? 'paper' : 'project'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (section.key === 'gallery') record.date = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     if (section.key === 'news') { record.date = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`; record.kind = 'Paper'; }
     return record;
   }

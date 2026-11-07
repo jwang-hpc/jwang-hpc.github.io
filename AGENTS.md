@@ -23,8 +23,9 @@ The Lab page contains research, projects, students, and sponsors. Do not restore
 Education, Professional Service, redundant PI links or the removed tagline.
 
 Use the Charlotte light palette and neutral charcoal dark palette in
-content/design.json. Keep text at least as large as News (16px). Optima is the
-active font, with system Candara and local Source Sans 3 fallbacks. The Chinese
+content/design.json. Keep text at least as large as News (16px). Typography
+matches the funding tracker: locally hosted Google Sans (weight 400) for h1–h4,
+and the system UI sans-serif stack for body and navigation. The Chinese
 name 王金震 uses 行楷 with its local subset; preserve font licenses. Other local
 fonts remain in use by the supported XML settings and typography preview page.
 Header logos use the black/green HPDi variants in light mode and white in dark.

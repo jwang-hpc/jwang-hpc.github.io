@@ -32,7 +32,7 @@
   }
   function records() { return M.get(draft.content, section.path); }
   function selected() { return section.list ? records()[index] : records(); }
-  function recordTitle(record) { return record.title || record.name || record.text || 'New entry'; }
+  function recordTitle(record) { return record.caption || record.title || record.name || record.text || 'New entry'; }
   function updateRecordLabels() {
     if (!section.list) return;
     const query = $('record-search').value.toLowerCase();
@@ -52,6 +52,23 @@
       const target = field.store ? draft.content[field.store] : record;
       const getValue = () => target[field.key];
       const setValue = value => { target[field.key] = value; changed(); };
+      if (field.type === 'photo') {
+        const label = text('label', '', 'field'); label.append(text('span', field.label + ' *'));
+        const upload = document.createElement('input'); upload.type='file'; upload.accept='image/jpeg,image/png,image/webp'; upload.disabled=!local;
+        label.append(upload, text('span', getValue() || 'Choose a photo. JPEG, PNG or WebP; up to 10 MB.', 'field-hint'));
+        upload.addEventListener('change', async () => {
+          const file=upload.files[0]; if(!file)return;
+          if(file.size>10*1024*1024){notice('Photo must be at most 10 MB.');return;}
+          upload.disabled=true;
+          try {
+            const bitmap=await createImageBitmap(file),canvas=document.createElement('canvas'),scale=Math.min(1,2000/Math.max(bitmap.width,bitmap.height));
+            canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+            const data=canvas.toDataURL('image/jpeg',.9).split(',')[1];
+            const response=await fetch('/api/upload-photo',{method:'POST',headers:{'Content-Type':'application/json','X-Editor-Token':local.token},body:JSON.stringify({base_revision:draft.base_revision,photo_id:record.id,data})});
+            const result=await response.json();if(!response.ok)throw new Error(result.error);setValue(result.path);notice('Photo uploaded locally. Add its caption and description, then Preview and Publish.');renderForm();
+          }catch(error){report(error);}finally{upload.disabled=false;}
+        });container.append(label);continue;
+      }
       if (field.type === 'pdf') {
         const label = text('label', '', 'field');
         label.append(text('span', field.label), text('span', getValue() || 'No CV uploaded', 'field-hint'));
@@ -165,7 +182,7 @@
     $('records-panel').hidden = !section.list; $('edit-panel').style.gridTemplateColumns = section.list ? '' : '1fr';
     $('records-title').textContent = `${section.label} (${section.list ? records().length : 1})`;
     $('section-description').textContent = `Manage ${section.label.toLowerCase()}, then preview your changes.`;
-    $('preview-page').value = ['projects', 'people', 'lab', 'sponsors'].includes(key) ? 'lab.html' : 'index.html';
+    $('preview-page').value = key === 'gallery' ? 'gallery.html' : ['projects', 'people', 'lab', 'sponsors'].includes(key) ? 'lab.html' : 'index.html';
     $('edit-panel').hidden = false; $('preview-panel').hidden = true;
     renderForm(); updateRecordLabels();
   }
@@ -277,7 +294,7 @@
     [seed, schema] = await Promise.all(['editor-data.json','editor-schema.json'].map(async file => { const response = await fetch(file); if (!response.ok) throw new Error('Content could not be loaded. Please reload the editor.'); return response.json(); }));
     try { const response = await fetch('/api/status'); if (response.ok) { const status = await response.json(); if (status.mode === 'local') { local = status; seed = status.bundle; } } } catch { /* Hosted editor supports browser drafts without a local service. */ }
     baseline = M.clone(seed.content); draft = M.clone(seed);
-    function upgradeDraft(value) { if(value?.schema_version===1&&value.content)value.content.design=M.clone(seed.content.design);return value; }
+    function upgradeDraft(value) { if(value?.schema_version===1&&value.content){value.content.design=M.clone(seed.content.design);value.content.gallery ||= M.clone(seed.content.gallery);}return value; }
     try { const saved = upgradeDraft(JSON.parse(localStorage.getItem(storageKey))); if (saved?.schema_version === 1 && !M.validate(saved.content,schema,baseline).length) { draft = saved; if (saved.base_revision !== seed.base_revision) notice('A saved draft is based on older content. Download it before loading current content; publishing will protect newer changes.'); } } catch { /* Start from the published content if there is no readable draft. */ }
     if (local) { $('save-button').hidden = false; $('mode-note').textContent = 'Save writes checked content on this computer. Publish commits and pushes local-design; merge into main to deploy.'; }
     for (const item of schema.filter(item => item.key !== 'design')) { const node = button(item.label,()=>choose(item.key)); node.dataset.section = item.key; $('sections').append(node); }

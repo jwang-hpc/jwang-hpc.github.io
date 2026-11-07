@@ -3,7 +3,8 @@ const menu=document.querySelector('.menu-toggle'), nav=document.querySelector('#
 menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));nav.classList.toggle('is-open',open);});
 nav?.addEventListener('click',event=>{if(event.target.closest('a')&&window.matchMedia('(max-width:700px)').matches){menu.setAttribute('aria-expanded','false');nav.classList.remove('is-open');}});
 const fontDescriptions={
- optima:'Optima: current trial for body and headings. Uses installed Optima, with Candara and Source Sans 3 as fallbacks.',
+ 'google-sans':'Google Sans headings with system sans-serif body text: current design, matching the funding tracker.',
+ optima:'Optima: previous design for body and headings. Uses installed Optima, with Candara and Source Sans 3 as fallbacks.',
  'source-sans':'Source Sans 3: warm, readable, understated sans-serif alternative.',
  inter:'Inter: crisp and modern, with a clean sans-serif hierarchy.',
  plex:'IBM Plex Sans: a distinctive technical character for systems research.',
@@ -17,8 +18,8 @@ function applyFont(font){
  if(!Object.hasOwn(fontDescriptions,font))return;
  document.body.dataset.font=font;
  if(params.has('font')||params.get('preview')==='fonts'){
-  const families={optima:"Optima,Candara,'Source Sans 3',Arial,sans-serif",'source-sans':"'Source Sans 3',Arial,sans-serif",inter:'Inter,Arial,sans-serif',plex:"'IBM Plex Sans',Arial,sans-serif",serif:"'Source Serif 4',Georgia,serif",palatino:"'TeX Gyre Pagella',Palatino,serif"};
-  document.body.style.setProperty('--d-body-font',families[font==='serif'?'source-sans':font]);
+  const families={'google-sans':"'Google Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",system:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",optima:"Optima,Candara,'Source Sans 3',Arial,sans-serif",'source-sans':"'Source Sans 3',Arial,sans-serif",inter:'Inter,Arial,sans-serif',plex:"'IBM Plex Sans',Arial,sans-serif",serif:"'Source Serif 4',Georgia,serif",palatino:"'TeX Gyre Pagella',Palatino,serif"};
+  document.body.style.setProperty('--d-body-font',families[font==='serif'?'source-sans':font==='google-sans'?'system':font]);
   document.body.style.setProperty('--d-heading-font',families[font]);
  }
  document.querySelectorAll('[data-font-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.fontChoice===font)));

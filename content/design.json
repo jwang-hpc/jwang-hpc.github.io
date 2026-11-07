@@ -1,8 +1,8 @@
 {
   "typography": {
-    "body_font": "optima",
-    "heading_font": "optima",
-    "nav_font": "source-sans",
+    "body_font": "system",
+    "heading_font": "google-sans",
+    "nav_font": "system",
     "body_size": 16,
     "heading_size": 44,
     "section_size": 26,

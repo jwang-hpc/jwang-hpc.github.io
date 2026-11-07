@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the current academic website with Python's standard library."""
 from news_format import render_news_text
+from gallery import render_gallery
 from person_cards import render_people
 from project_portfolio import project_cards, project_detail
 import json
@@ -38,7 +39,7 @@ papers=sorted(load('publications'),key=lambda x:x['year'],reverse=True)
 projects=load('projects'); teaching=load('teaching'); lab=load('lab')
 people=[person for person in load('people') if person.get('approved') is True]
 name_heading=e(profile['name'])+(f' <span class="chinese-name" lang="zh-Hans">{e(profile["name_chinese"])}</span>' if profile.get('name_chinese') else '')
-FONTS=[('optima','Optima','Current trial. Uses installed Optima, with Candara and locally hosted Source Sans 3 as fallbacks.'),('source-sans','Source Sans 3','Warm, readable, understated sans-serif alternative.'),('inter','Inter','Crisp and modern, with a clean sans-serif hierarchy.'),('plex','IBM Plex Sans','A distinctive technical character, well suited to systems research.'),('serif','Source Serif 4 + Source Sans 3','Contemporary serif headings with readable sans-serif body text.'),('palatino','TeX Gyre Pagella / Palatino','Academic serif alternative. Locally hosted TeX Gyre Pagella for body and headings, with Palatino as fallback. Navigation uses Source Sans 3.')]
+FONTS=[('google-sans','Google Sans + system sans-serif','Current design, matching the funding tracker. Locally hosted Google Sans for headings with the system UI sans-serif for body text and navigation.'),('optima','Optima','Previous design. Uses installed Optima, with Candara and locally hosted Source Sans 3 as fallbacks.'),('source-sans','Source Sans 3','Warm, readable, understated sans-serif alternative.'),('inter','Inter','Crisp and modern, with a clean sans-serif hierarchy.'),('plex','IBM Plex Sans','A distinctive technical character, well suited to systems research.'),('serif','Source Serif 4 + Source Sans 3','Contemporary serif headings with readable sans-serif body text.'),('palatino','TeX Gyre Pagella / Palatino','Academic serif alternative. Locally hosted TeX Gyre Pagella for body and headings, with Palatino as fallback. Navigation uses Source Sans 3.')]
 
 def link(label,url,cls=''):
     return f'<a class="{e(cls)}" href="{e(url)}">{e(label)}</a>'
@@ -58,10 +59,12 @@ def page(filename,title,body,design='classic',description=None,lab_page=False):
             nav+=f'<a class="section-nav" data-section="{e(item["target"])}" href="{("#" if filename=="lab.html" else "lab.html#")+e(item["target"])}">{e(item["label"])}</a>'
         else:
             nav+=f'<a href="{e(item["target"])}"'+(' aria-current="page"' if filename==item['target'] else '')+(' class="nav-lab"' if item['target']=='lab.html' else '')+f'>{e(item["label"])}</a>'
+    if lab_page and not any(item.get('target') == 'gallery.html' for item in lab['navigation']): nav += '<a href="gallery.html"'+(' aria-current="page"' if filename == 'gallery.html' else '')+'>Gallery</a>'
     font_controls='<aside class="font-preview" hidden aria-label="Typography preview"><div class="font-preview-title"><strong>Compare typefaces</strong><a href="fonts.html">View samples →</a></div><div class="font-buttons">'+''.join(f'<button type="button" data-font-choice="{key}" aria-pressed="false">{e(name)}</button>' for key,name,_ in FONTS)+'</div><p id="font-description" role="status" aria-live="polite"></p></aside>'
     document_title = profile['lab'] if lab_page else (f"{profile['name']} | {profile['role'].capitalize()}, {profile['university']}" if filename == 'index.html' else f"{title} · {profile['name']}")
     s=head(document_title,description or 'Academic website of Jinzhen Wang at UNC Charlotte. Research, publications, news, and teaching.',design,asset)
     if (ROOT/'assets/assistant-design.css').exists(): s=s.replace('</head>', '<link rel="stylesheet" href="assets/assistant-design.css"></head>')
+    if filename == 'gallery.html': s=s.replace('</head>', '<link rel="stylesheet" href="assets/gallery.css"><script src="assets/gallery.js" defer></script></head>')
     if lab_page: s=s.replace(f'{asset}favicon.svg', f'{asset}lab-favicon.svg')
     if filename=='fonts.html': s=s.replace(f'<link rel="stylesheet" href="{asset}design.css">','')
     shell='page-shell lab-shell' if lab_page else 'page-shell single-column'
@@ -151,6 +154,7 @@ page('publications.html','Publications',pubbody)
 page('projects.html','Projects',projbody)
 for project in projects:
     page('project-'+project['id']+'.html',project['name'],project_detail(project, papers),lab_page=True)
+page('gallery.html','Gallery',intro('Life at HPDi','Research, shared experiences, and the people behind our work.')+render_gallery(load('gallery')),lab_page=True)
 page('lab.html',profile['lab'],labbody,lab_page=True)
 page('people.html','People',peoplebody)
 page('teaching.html','Teaching',teachbody)

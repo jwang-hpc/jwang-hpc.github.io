@@ -250,6 +250,25 @@ class Editor:
         stage = target.with_suffix('.pdf.editor-tmp'); stage.write_bytes(raw); stage.replace(target)
         return dict(ok=True, path=CV_PATH)
 
+    def upload_photo(self, payload):
+        if payload.get('base_revision') != revision(read_content(self.root)):
+            raise EditorError('Content changed; reload before uploading.', 409)
+        key = payload.get('photo_id', '')
+        if not isinstance(key, str) or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}', key):
+            raise EditorError('Choose a valid gallery record.')
+        try: raw = base64.b64decode(payload.get('data', ''), validate=True)
+        except (ValueError, binascii.Error): raise EditorError('Choose a valid photo.')
+        if not 0 < len(raw) <= 10 * 1024 * 1024 or not raw.startswith(b'\xff\xd8\xff') or not raw.endswith(b'\xff\xd9'):
+            raise EditorError('Choose a JPEG photo of at most 10 MB.')
+        path = f'assets/gallery/{key}.jpg'
+        target = self.root / path
+        if target.exists():
+            backup = self.state / 'backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+            backup.mkdir(parents=True); shutil.copy2(target, backup / target.name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        stage = target.with_suffix('.jpg.editor-tmp'); stage.write_bytes(raw); stage.replace(target)
+        return dict(ok=True, path=path)
+
     def upload_paper(self, payload):
         if payload.get('base_revision') != revision(read_content(self.root)):
             raise EditorError('Content changed; reload the editor before uploading.', 409)
@@ -275,6 +294,7 @@ class Editor:
         outside = self.git('diff', '--name-only', 'HEAD').splitlines() + self.git('ls-files', '--others', '--exclude-standard').splitlines()
         allowed = {f'content/{name}.json' for name in CONTENT_NAMES if name != 'design'} | {CV_PATH}
         allowed.update(path for path in outside if re.fullmatch(r'assets/papers/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.pdf', path))
+        allowed.update(path for path in outside if re.fullmatch(r'assets/gallery/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.jpg', path))
         if design_publish: allowed = {'content/design.json', CSS_PATH}
         if any(path not in allowed and not path.startswith('dist/') for path in outside):
             raise EditorError('There are code or layout changes outside the editor. Commit or discard them separately before publishing content.', 409)
@@ -301,6 +321,7 @@ class Editor:
                 paths.remove('dist')  # GitHub Actions rebuilds ignored output from source.
             if not design_publish and (self.root / CV_PATH).exists(): paths.append(CV_PATH)
             if not design_publish and (self.root / 'assets/papers').exists(): paths.append('assets/papers')
+            if not design_publish and (self.root / 'assets/gallery').exists(): paths.append('assets/gallery')
             self.git('add', '--', *paths)
             if not self.git('diff', '--cached', '--name-only'):
                 checked = self.push_status()
@@ -377,11 +398,11 @@ def make_handler(editor):
                 return self.reply(dict(error='JSON content is required.'), 415)
             try: length = int(self.headers.get('Content-Length', '0'))
             except ValueError: return self.reply(dict(error='Invalid request size.'), 400)
-            if not 0 < length <= (14000000 if urlparse(self.path).path in ('/api/upload-cv', '/api/upload-paper') else 1000000): return self.reply(dict(error='Content package is too large or empty.'), 413)
+            if not 0 < length <= (14000000 if urlparse(self.path).path in ('/api/upload-cv', '/api/upload-paper', '/api/upload-photo') else 1000000): return self.reply(dict(error='Content package is too large or empty.'), 413)
             if not editor.lock.acquire(blocking=False): return self.reply(dict(error='Another editor operation is running. Try again when it finishes.'), 409)
             try:
                 payload = json.loads(self.rfile.read(length))
-                action = {'/api/preview': editor.preview_content, '/api/save': editor.save, '/api/publish': editor.publish, '/api/upload-cv': editor.upload_cv, '/api/upload-paper': editor.upload_paper, '/api/bibtex': editor.lookup_bibtex, '/api/push-status': editor.push_status, '/api/design-configure': editor.design_configure, '/api/design-chat': editor.design_chat, '/api/design-preview': editor.design_preview, '/api/design-apply': editor.design_apply, '/api/design-publish': editor.design_publish}.get(urlparse(self.path).path)
+                action = {'/api/preview': editor.preview_content, '/api/save': editor.save, '/api/publish': editor.publish, '/api/upload-cv': editor.upload_cv, '/api/upload-paper': editor.upload_paper, '/api/upload-photo': editor.upload_photo, '/api/bibtex': editor.lookup_bibtex, '/api/push-status': editor.push_status, '/api/design-configure': editor.design_configure, '/api/design-chat': editor.design_chat, '/api/design-preview': editor.design_preview, '/api/design-apply': editor.design_apply, '/api/design-publish': editor.design_publish}.get(urlparse(self.path).path)
                 if not action: raise EditorError('Unknown editor action.', 404)
                 self.reply(action(payload))
             except EditorError as error: self.reply(dict(error=str(error), **error.extra), error.status)

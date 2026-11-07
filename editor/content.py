@@ -64,6 +64,7 @@ def validate(data, baseline):
                     for index, child in enumerate(value): fields(child, item['fields'], f'{prefix} {index + 1}')
             elif not isinstance(value, str) or len(value) > 20000:
                 errors.append(prefix + ': invalid text.')
+            elif kind == 'photo' and not re.fullmatch(r'assets/gallery/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.jpg', value): errors.append(prefix + ': upload a photo.')
             elif kind == 'paperurl' and not (valid_url(value) or re.fullmatch(r'assets/papers/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\.pdf', value)): errors.append(prefix + ': use an http(s) URL or upload a paper PDF.')
             elif kind == 'pdf' and not (value == 'assets/cv/jinzhen-wang.pdf' or valid_url(value)): errors.append(prefix + ': upload a PDF.')
             elif kind == 'url' and not valid_url(value): errors.append(prefix + ': use a complete http(s) URL.')
@@ -85,7 +86,7 @@ def validate(data, baseline):
             for index, record in enumerate(value): fields(record, section['fields'], f"{section['label']} {index + 1}")
         else:
             fields(value, section['fields'], section['label'])
-    for name in ('publications', 'projects'):
+    for name in ('publications', 'projects', 'gallery'):
         ids = set()
         if isinstance(data[name], list):
             for record in data[name]:

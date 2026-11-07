@@ -38,6 +38,26 @@ class EditorTests(unittest.TestCase):
         data['content']['news'].insert(0, dict(date='2026-10', kind='Update', text='Editor integration test announcement.', url=''))
         return data
 
+    def test_gallery_upload_preview_and_validation(self):
+        draft = bundle(self.root)
+        raw = b'\xff\xd8\xffexample\xff\xd9'
+        payload = dict(base_revision=draft['base_revision'], photo_id='photo-test', data=base64.b64encode(raw).decode())
+        result = self.editor.upload_photo(payload)
+        draft['content']['gallery'] = [dict(id='photo-test', caption='Team & research', date='2026-10', event='Lab life', members='Example members', alt='Example group photo', image=result['path'])]
+        self.assertFalse(validate(draft['content'], read_content(self.root)))
+        self.editor.preview_content(draft)
+        html = (Path(self.editor.preview.name) / 'dist/gallery.html').read_text()
+        self.assertIn('Team &amp; research', html)
+        self.assertIn('gallery-viewer', html)
+        self.assertEqual((Path(self.editor.preview.name) / 'dist' / result['path']).read_bytes(), raw)
+        self.assertEqual(read_content(self.root)['gallery'], [])
+        self.editor.upload_photo(payload)
+        self.assertTrue(list((self.root / '.editor-state/backups').glob('*/photo-test.jpg')))
+        for invalid in (dict(payload, photo_id='../bad'), dict(payload, data='YmFk'), dict(payload, base_revision='stale')):
+            with self.assertRaises(EditorError): self.editor.upload_photo(invalid)
+        draft['content']['gallery'][0]['image'] = '../secret.jpg'
+        self.assertTrue(validate(draft['content'], read_content(self.root)))
+
     def test_paper_upload_preview_backup_and_invalid_paths(self):
         draft = bundle(self.root)
         paper = draft['content']['publications'][0]
