@@ -18,6 +18,36 @@
     "bibtex": "@misc{deepcq2026,\n  title = {{DeepCQ: General-Purpose Deep-Surrogate Framework for Lossy Compression Quality Prediction}},\n  author = {Mumenin, Khondoker Mirazul and Underwood, Robert and Dai, Dong and Wang, Jinzhen and Di, Sheng and Lukić, Zarija and Cappello, Franck},\n  year = {2025},\n  eprint = {2512.21433},\n  archivePrefix = {arXiv},\n  primaryClass = {cs.LG},\n  doi = {10.48550/arXiv.2512.21433},\n  url = {https://arxiv.org/abs/2512.21433},\n  note = {Preprint; conference citation metadata not yet verified}\n}"
   },
   {
+    "id": "compressor2026",
+    "year": 2026,
+    "title": "Compressor-Aware Feature Analysis and Learning-Based Performance Prediction for Scientific Data Compression",
+    "authors": "Zhenlu Qin, Qirui Tian, Lei Wu, Jinzhen Wang",
+    "venue": "Journal of Artificial Intelligence for Automation",
+    "short": "Journal of Artificial Intelligence for Automation",
+    "selected": false,
+    "links": [
+      {
+        "label": "DOI",
+        "url": "https://doi.org/10.53941/jaia.2026.100013"
+      }
+    ],
+    "doi": "10.53941/jaia.2026.100013",
+    "citation": {
+      "type": "article",
+      "title": "Compressor-Aware Feature Analysis and Learning-Based Performance Prediction for Scientific Data Compression",
+      "author": "Qin, Zhenlu and Tian, Qirui and Wu, Lei and Wang, Jinzhen",
+      "venue": "Journal of Artificial Intelligence for Automation",
+      "year": 2026,
+      "volume": "1",
+      "number": "2",
+      "pages": "",
+      "publisher": "Scilight Press Pty Ltd",
+      "doi": "10.53941/jaia.2026.100013",
+      "url": "https://doi.org/10.53941/jaia.2026.100013"
+    },
+    "citation_source": "https://api.crossref.org/works/10.53941/jaia.2026.100013"
+  },
+  {
     "id": "neurlz2025",
     "year": 2025,
     "title": "NeurLZ: An Online Neural Learning-Based Method to Enhance Scientific Lossy Compression",
@@ -494,5 +524,35 @@
       "url": "https://doi.org/10.1109/lcos.2018.2855118"
     },
     "citation_source": "https://api.crossref.org/works/10.1109/lcos.2018.2855118"
+  },
+  {
+    "id": "robust2017",
+    "year": 2017,
+    "title": "Robust and scalable deep learning for X-ray synchrotron image analysis",
+    "authors": "Nicole Meister, Ziqiao Guan, Jinzhen Wang, Ronald Lashley, Jiliang Liu, Julien Lhermitte, Kevin Yager, Hong Qin, Bo Sun, Dantong Yu",
+    "venue": "New York Scientific Data Summit",
+    "short": "NYSDS",
+    "selected": false,
+    "links": [
+      {
+        "label": "DOI",
+        "url": "https://doi.org/10.1109/nysds.2017.8085045"
+      }
+    ],
+    "doi": "10.1109/nysds.2017.8085045",
+    "citation": {
+      "type": "inproceedings",
+      "title": "Robust and scalable deep learning for X-ray synchrotron image analysis",
+      "author": "Meister, Nicole and Guan, Ziqiao and Wang, Jinzhen and Lashley, Ronald and Liu, Jiliang and Lhermitte, Julien and Yager, Kevin and Qin, Hong and Sun, Bo and Yu, Dantong",
+      "venue": "2017 New York Scientific Data Summit (NYSDS)",
+      "year": 2017,
+      "volume": "",
+      "number": "",
+      "pages": "1--6",
+      "publisher": "IEEE",
+      "doi": "10.1109/nysds.2017.8085045",
+      "url": "https://doi.org/10.1109/nysds.2017.8085045"
+    },
+    "citation_source": "https://api.crossref.org/works/10.1109/nysds.2017.8085045"
   }
 ]
