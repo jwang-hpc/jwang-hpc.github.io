@@ -12,7 +12,7 @@
   "github": "https://github.com/HPDiL",
   "cv": "assets/cv/jinzhen-wang.pdf",
   "site_url": "https://jwang-hpc.github.io",
-  "updated": "October 12, 2026",
+  "updated": "November 7, 2026",
   "bio": [
     "Jinzhen Wang is an Assistant Professor in the Department of Computer Science at the University of North Carolina at Charlotte, where he leads the High-Performance Data Intensive (HPDi) Lab. His research spans high-performance computing, scientific data management, and machine learning, with an emphasis on scientific data compression, progressive retrieval, and performance modeling. He develops methods to reduce the storage and data movement costs of large scientific datasets while preserving their usefulness for analysis and learning. His work has appeared in venues including SC, ICDE, IPDPS, IEEE TPDS, and IEEE TC.",
     "Dr. Wang earned his Ph.D. in Electrical Engineering from the New Jersey Institute of Technology in 2023 under the supervision of Dr. Qing Liu, and his bachelor’s degree from Shandong University in 2015. Before joining UNC Charlotte, he served as an Assistant Professor at Brooklyn College, City University of New York. He was a research intern at Los Alamos National Laboratory from 2022 to 2023."
