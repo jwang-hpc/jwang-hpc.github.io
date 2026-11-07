@@ -10,10 +10,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from publication_format import publication_label
-from editor.content import bundle as editor_bundle
-from editor.schema import SECTIONS as editor_sections
-from editor.design import token_css, validate_design
-from editor.design_xml import to_xml
+from design import token_css, validate_design
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'dist'
@@ -63,7 +60,6 @@ def page(filename,title,body,design='classic',description=None,lab_page=False):
     font_controls='<aside class="font-preview" hidden aria-label="Typography preview"><div class="font-preview-title"><strong>Compare typefaces</strong><a href="fonts.html">View samples →</a></div><div class="font-buttons">'+''.join(f'<button type="button" data-font-choice="{key}" aria-pressed="false">{e(name)}</button>' for key,name,_ in FONTS)+'</div><p id="font-description" role="status" aria-live="polite"></p></aside>'
     document_title = profile['lab'] if lab_page else (f"{profile['name']} | {profile['role'].capitalize()}, {profile['university']}" if filename == 'index.html' else f"{title} · {profile['name']}")
     s=head(document_title,description or 'Academic website of Jinzhen Wang at UNC Charlotte. Research, publications, news, and teaching.',design,asset)
-    if (ROOT/'assets/assistant-design.css').exists(): s=s.replace('</head>', '<link rel="stylesheet" href="assets/assistant-design.css"></head>')
     if filename == 'gallery.html': s=s.replace('</head>', '<link rel="stylesheet" href="assets/gallery.css"><script src="assets/gallery.js" defer></script></head>')
     if lab_page: s=s.replace(f'{asset}favicon.svg', f'{asset}lab-favicon.svg')
     if filename=='fonts.html': s=s.replace(f'<link rel="stylesheet" href="{asset}design.css">','')
@@ -165,11 +161,6 @@ for extra in settings.get('extra_pages',[]):
         content+=f'<article class="project"><h2>{e(item["title"])}</h2><p>{e(item["description"])}</p>'+(link('Details →',item['url']) if item.get('url') else '')+'</article>'
     page(extra['file'],extra['title'],content)
 page('404.html','Page not found',intro('Page not found','This page may have moved.')+link('Return home →','index.html'))
-(OUT/'admin').mkdir(exist_ok=True)
-shutil.copy2(ROOT/'editor/index.html', OUT/'admin/index.html')
-(OUT/'admin/editor-data.json').write_text(json.dumps(editor_bundle(ROOT),ensure_ascii=False))
-(OUT/'admin/editor-schema.json').write_text(json.dumps(editor_sections,ensure_ascii=False))
-(OUT/'assets/design.xml').write_text(to_xml(design_settings),encoding='utf-8')
 (OUT/'.nojekyll').touch()
 (OUT/'assets'/'publications.bib').write_text('\n\n'.join(bib(p) for p in papers)+'\n')
 print(f'Built {len(list(OUT.rglob("*.html")))} pages, {len(papers)} papers and {len(news)} news items.')

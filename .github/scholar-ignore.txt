@@ -1,0 +1,3 @@
+# Google Scholar titles the scholar-sync workflow (every four months) should never propose.
+# One title per line (case and punctuation do not matter). Use this for theses,
+# posters, duplicates or anything you have decided not to list on the website.

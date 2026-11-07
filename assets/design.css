@@ -151,3 +151,18 @@ body .cv-dialog-header{display:flex;align-items:center;justify-content:space-bet
 body .cv-dialog-header h2{margin:0;font-size:var(--d-body-size)}
 body .cv-dialog-header button{background:transparent;border:0;color:var(--ink);font-size:28px;cursor:pointer;width:40px;height:40px}
 body .cv-dialog iframe{width:100%;flex:1;border:0;min-height:0;background:#fff}
+
+/* Lab page: hide project collaborators and context lines (formerly assistant-design.css). */
+.project .collaborators,
+.portfolio-card .collaborators,
+.project-card .collaborators,
+[class*="project"] .collaborators{
+  display:none !important;
+}
+.portfolio-card .portfolio-context,
+.project .project-subtitle,
+.project .project-context,
+.project-card .project-context,
+[class*="project"] .project-context{
+  display:none !important;
+}

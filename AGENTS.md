@@ -8,9 +8,8 @@ alternatives, Editorial, Simple or Compact demos, snapshot exports, or legacy pa
 
 - Content is in content/*.json. build.py generates dist/, which is ignored.
 - Use Python's standard library; preserve static hosting and accessibility.
-- Run python3 build.py, python3 scripts/check_site.py, Python unittest discovery,
-  and node --test tests/editor-model.test.cjs for editor changes.
-- Preview uses the real build, including future renderer modules. Exclude Git,
+- Run python3 build.py, python3 scripts/check_site.py and Python unittest discovery.
+- Preview with the real build (python3 -m http.server -d dist). Exclude Git,
   credentials, generated output and local state from temporary preview sources.
 - Never infer student or publication facts. Publication/project IDs stay stable.
 
@@ -27,40 +26,35 @@ content/design.json. Keep text at least as large as News (16px). Typography
 matches the funding tracker: locally hosted Google Sans (weight 400) for h1–h4,
 and the system UI sans-serif stack for body and navigation. The Chinese
 name 王金震 uses 行楷 with its local subset; preserve font licenses. Other local
-fonts remain in use by the supported XML settings and typography preview page.
+fonts remain in use by the design settings and typography preview page.
 Header logos use the black/green HPDi variants in light mode and white in dark.
 Sponsor logos retain proportions, with equal 240×96px boxes in three columns.
 Preserve mobile layouts, theme controls, keyboard access, and team/CV dialogs.
 
-## Editor and Git
+## Workflow and Git
 
-Open with python3 edit.py. Fetch origin and fast-forward clean local-design
-checkouts. Preserve saved local edits; open local files when offline or diverged.
-Do not switch dirty other branches or proceed with unfinished merges.
-Never merge main automatically, push main, force-push, or discard local work.
-User merges local-design into main to deploy through .github/workflows/pages.yml.
+There is no local editor; the owner works through Claude Code sessions. Edit
+content/*.json and source files directly, build and test, then commit and push
+to local-design. Never merge or push main, force-push, or discard work; the owner
+merges local-design into main to deploy through .github/workflows/pages.yml.
+After pushing, confirm receipt by fetching and checking commit ancestry, not only
+Git exit status. stamp-updated.yml stamps the update date on local-design pushes
+(a bot commit follows yours); it must never write main.
 
-The browser editor supports content only. Design changes use source edits or
-scripts/design_xml.py with the supported XML schema. Arbitrary third-party XML
-must be translated to that schema first.
+Design settings live in content/design.json (validated by design.py, which also
+generates the design tokens). Styling changes go in assets/*.css.
 
-CV uploads validate PDFs and save to assets/cv/jinzhen-wang.pdf. Publish includes
-the PDF and stamps the date in America/New_York. stamp-updated.yml also stamps
-manual pushes to local-design; it must never write main.
+The CV lives at assets/cv/jinzhen-wang.pdf, paper PDFs at assets/papers/<id>.pdf.
+Gallery photos go in assets/gallery/ as metadata-stripped JPEGs, at most 2000 px.
+
+## Citations and Google Scholar
 
 Use verified publisher DOI metadata for citations, or a pasted Scholar/IEEE/ACM
 BibTeX export. Do not fabricate pages, DOI, year or conference metadata. DeepCQ
 currently cites its verified arXiv preprint until publisher metadata is available.
 
-After Publish, confirm remote receipt by fetching and checking commit ancestry, not only Git exit status. Keep pending commits on failures. The editor status panel checks on opening, periodically while visible, and on request; preserve reminders for saved/unpushed/unconfirmed work.
-
-## Embedded design assistant exception
-The owner authorized a separate Design changes section using their OpenAI API
-key. Keep content forms free of design sliders. API keys may be remembered only in ignored .editor-state/openai-credentials.json
-with owner-only permissions, as authorized by the owner. Never serialize keys
-to status, browser storage, tracked source, previews or exports.
-Use the Responses API with structured proposals. Chat/preview never mutate
-source. Apply only validated design JSON and a CSS override after explicit user
-action, with backups and source-revision checks. Do not execute model-generated
-scripts or permit external resource imports in proposed CSS. Publish design only
-to local-design and confirm receipt. Never write main. Retain content drafts.
+.github/workflows/scholar-sync.yml (every four months) uses Google Scholar only to
+discover candidates. It adds a paper only with a confident Crossref match that
+lists Jinzhen Wang, and opens a PR into local-design for the owner to approve;
+unverified papers are reported for manual entry. Titles to skip go in
+.github/scholar-ignore.txt.
