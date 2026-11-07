@@ -8,8 +8,8 @@ else is reported for manual entry; no publication facts are inferred.
 
 Scholar source: the public profile page, or SerpAPI's Google Scholar Author
 API when SERPAPI_KEY is set. Scholar usually blocks requests from CI servers;
-the script then falls back to DBLP, choosing the DBLP author profile whose
-papers overlap most with the DOIs already on the site.
+the script then falls back to OpenAlex, using the author record(s) that appear
+as Jinzhen Wang on DOIs already on the site.
 """
 import argparse
 import difflib
@@ -18,7 +18,6 @@ import os
 import re
 import sys
 import time
-import xml.etree.ElementTree as ET
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
@@ -33,7 +32,7 @@ from bibliography import from_metadata  # noqa: E402
 PUBLICATIONS = ROOT / 'content' / 'publications.json'
 IGNORE = ROOT / '.github' / 'scholar-ignore.txt'
 USER_AGENT = 'Mozilla/5.0 (compatible; HPDi-website-scholar-sync/1.0; +https://github.com/jwang-hpc/jwang-hpc.github.io)'
-DBLP_HOSTS = ('dblp.org', 'dblp.uni-trier.de')
+OPENALEX_SKIP = {'preprint', 'dataset', 'paratext', 'dissertation', 'erratum', 'retraction', 'peer-review', 'standard', 'grant', 'other'}
 PAPER_TYPES = {'journal-article', 'proceedings-article', 'book-chapter'}
 STOPWORDS = {'a', 'an', 'the', 'on', 'of', 'for', 'to', 'in', 'and', 'with', 'towards', 'toward', 'via', 'using', 'by', 'at', 'from', 'is', 'are'}
 
@@ -49,7 +48,7 @@ def get(url, accept='text/html', attempts=5):
             with urlopen(request, timeout=30) as response:
                 return response.read().decode('utf-8', 'replace')
         except HTTPError as error:
-            # Back off on rate limits (Crossref, DBLP) but not on Scholar, which means a block.
+            # Back off on rate limits (Crossref, OpenAlex) but not on Scholar, which means a block.
             if error.code not in (429, 503) or 'scholar.google' in url or attempt == attempts - 1:
                 raise
             retry_after = error.headers.get('Retry-After', '')
@@ -148,59 +147,42 @@ def scholar_serpapi(user, key):
         start += 100
 
 
-def dblp_records(xml_text):
-    """Formal publications in a DBLP person XML file (CoRR/informal entries skipped)."""
-    rows = []
-    for record in ET.fromstring(xml_text).iter('r'):
-        for pub in record:
-            if pub.get('publtype') in ('informal', 'withdrawn', 'edited'):
-                continue
-            title = ' '.join(''.join(pub.find('title').itertext()).split()).rstrip('.') if pub.find('title') is not None else ''
-            dois = [e.text.split('doi.org/', 1)[1] for e in pub.findall('ee') if e.text and 'doi.org/' in e.text]
-            venue = pub.findtext('journal') or pub.findtext('booktitle') or ''
-            if title:
-                rows.append(dict(title=title, authors=', '.join(a.text or '' for a in pub.findall('author')), venue=venue,
-                                 year=pub.findtext('year') or '', doi=dois[0] if dois else ''))
-    return rows
+def openalex(path, **params):
+    return json.loads(get(f'https://api.openalex.org/{path}?' + urlencode(params), 'application/json'))
 
 
-def dblp_author(name, publications):
-    """Rows for the DBLP profile of `name` that shares the most DOIs with the site."""
-    known = {p['doi'].lower() for p in publications if p.get('doi')}
-    hits, problems = None, []
-    for host in DBLP_HOSTS:
-        body = ''
-        try:
-            body = get(f'https://{host}/search/author/api?' + urlencode(dict(q=name, format='json', h=20)), 'application/json')
-            hits = json.loads(body)
-            break
-        except (HTTPError, URLError, ValueError) as error:
-            snippet = ' '.join(body[:160].split())
-            problems.append(f'{host}: {error}' + (f' (response began: {snippet!r})' if snippet else ''))
-    if hits is None:
-        raise ScholarBlocked('DBLP author search failed: ' + '; '.join(problems))
-    best = (0, None, [])
-    for hit in hits['result']['hits'].get('hit', []):
-        url = hit['info'].get('url', '')
-        if '/pid/' not in url:
-            continue
-        path = urlparse(url).path
-        rows = None
-        for host in DBLP_HOSTS:
-            try:
-                rows = dblp_records(get(f'https://{host}{path}.xml', 'application/xml'))
-                break
-            except (HTTPError, URLError, ET.ParseError):
+def openalex_rows(name, publications):
+    """Works by `name` in OpenAlex, identified via DOIs already on the site.
+
+    OpenAlex may split one person into several author IDs; every ID that
+    appears as `name` on at least one of the site's DOIs is used.
+    """
+    known = sorted({p['doi'].lower() for p in publications if p.get('doi')})
+    target = normalize(name)
+    ids = set()
+    for start in range(0, len(known), 40):
+        works = openalex('works', filter='doi:' + '|'.join(known[start:start + 40]), **{'per-page': 50, 'select': 'doi,authorships'})
+        for work in works.get('results', []):
+            for authorship in work.get('authorships', []):
+                author = authorship.get('author') or {}
+                if normalize(author.get('display_name', '')) == target and author.get('id'):
+                    ids.add(author['id'].rsplit('/', 1)[-1])
+    if not ids:
+        raise ScholarBlocked(f'OpenAlex has no author named {name} on any DOI already on the site.')
+    rows, cursor = [], '*'
+    while cursor and len(rows) < 1000:
+        page = openalex('works', filter='author.id:' + '|'.join(sorted(ids)), cursor=cursor,
+                        **{'per-page': 200, 'select': 'doi,title,publication_year,type,primary_location,authorships'})
+        for work in page.get('results', []):
+            if work.get('type') in OPENALEX_SKIP or not work.get('title'):
                 continue
-        if rows is None:
-            continue
-        overlap = sum(1 for r in rows if r['doi'].lower() in known)
-        if overlap > best[0]:
-            best = (overlap, url, rows)
-        time.sleep(1)
-    if best[0] < 2:
-        raise ScholarBlocked(f'No DBLP profile for {name} shares at least two DOIs with the site.')
-    return best[1], best[2]
+            source = ((work.get('primary_location') or {}).get('source') or {}).get('display_name') or ''
+            rows.append(dict(title=' '.join(unescape(re.sub(r'<[^>]+>', '', work['title'])).split()),
+                             authors=', '.join((a.get('author') or {}).get('display_name', '') for a in work.get('authorships', [])),
+                             venue=source, year=str(work.get('publication_year') or ''),
+                             doi=(work.get('doi') or '').removeprefix('https://doi.org/')))
+        cursor = page.get('meta', {}).get('next_cursor')
+    return 'https://openalex.org/' + '|'.join(sorted(ids)), rows
 
 
 def scholar_user(profile):
@@ -379,13 +361,13 @@ def main():
     try:
         rows = scholar_serpapi(user, key) if key else scholar_direct(user)
     except ScholarBlocked as error:
-        print(f'::warning::{error} Falling back to DBLP. Add a SERPAPI_KEY repository secret to use Google Scholar via SerpAPI.', file=sys.stderr)
+        print(f'::warning::{error} Falling back to OpenAlex. Add a SERPAPI_KEY repository secret to use Google Scholar via SerpAPI.', file=sys.stderr)
         try:
-            url, rows = dblp_author(profile.get('name', 'Jinzhen Wang'), publications)
-        except (ScholarBlocked, HTTPError, URLError, ET.ParseError, KeyError, ValueError) as dblp_error:
-            print(f'::error::DBLP fallback failed: {dblp_error}', file=sys.stderr)
+            url, rows = openalex_rows(profile.get('name', 'Jinzhen Wang'), publications)
+        except (ScholarBlocked, HTTPError, URLError, KeyError, ValueError) as fallback_error:
+            print(f'::error::OpenAlex fallback failed: {fallback_error}', file=sys.stderr)
             return 2
-        source = f'DBLP ({url}), because Google Scholar blocked the request'
+        source = f'OpenAlex ({url}), because Google Scholar blocked the request'
     if not rows:
         print('::error::No publications were returned.', file=sys.stderr)
         return 2

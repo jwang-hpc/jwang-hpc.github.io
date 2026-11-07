@@ -84,26 +84,29 @@ class ScholarSyncTests(unittest.TestCase):
         self.assertEqual(S.scholar_user({'scholar': 'https://scholar.google.com/citations?user=otnPh2IAAAAJ&hl=en'}), 'otnPh2IAAAAJ')
 
 
-    def test_dblp_fallback_picks_profile_overlapping_site_dois(self):
-        doi_a, doi_b = self.publications[4]['doi'], self.publications[5]['doi']
-        def person(*pubs):
-            body = ''.join(f'<r><{kind} key="k{i}"{extra}><author pid="1">Jinzhen Wang</author><title>{title}.</title><year>2026</year>'
-                           f'<booktitle>ICDE</booktitle><ee>https://doi.org/{doi}</ee></{kind}></r>' for i, (kind, extra, title, doi) in enumerate(pubs))
-            return f'<dblpperson name="Jinzhen Wang">{body}</dblpperson>'
-        mine = person(('inproceedings', '', 'Old A', doi_a), ('article', '', 'Old B', doi_b),
-                      ('inproceedings', '', 'Brand New <i>Paper</i>', '10.1/new'), ('article', ' publtype="informal"', 'arXiv copy', '10.48550/x'))
-        other = person(('article', '', 'Unrelated', '10.9/zzz'))
-        pages = {'search': json.dumps({'result': {'hits': {'hit': [{'info': {'url': 'https://dblp.org/pid/00/other'}}, {'info': {'url': 'https://dblp.org/pid/11/mine'}}]}}}),
-                 'other': other, 'mine': mine}
-        fake = lambda url, accept='': pages['search' if 'search' in url else 'mine' if 'mine' in url else 'other']
-        with patch.object(S, 'get', side_effect=fake), patch.object(S.time, 'sleep'):
-            url, rows = S.dblp_author('Jinzhen Wang', self.publications)
-        self.assertEqual(url, 'https://dblp.org/pid/11/mine')
-        self.assertEqual([r['title'] for r in rows], ['Old A', 'Old B', 'Brand New Paper'])
+    def test_openalex_fallback_uses_author_ids_on_site_dois(self):
+        doi_a = self.publications[4]['doi']
+        me = lambda i: {'author': {'id': f'https://openalex.org/A{i}', 'display_name': 'Jinzhen Wang'}}
+        other = {'author': {'id': 'https://openalex.org/A9', 'display_name': 'Qing Liu'}}
+        def work(title, doi, kind='article'):
+            return {'title': title, 'doi': f'https://doi.org/{doi}', 'publication_year': 2026, 'type': kind,
+                    'primary_location': {'source': {'display_name': 'IEEE TPDS'}}, 'authorships': [me(1)]}
+        calls = []
+        def fake(url, accept=''):
+            calls.append(url)
+            if 'filter=doi' in url:
+                return json.dumps({'results': [{'doi': doi_a, 'authorships': [me(1), other]}, {'doi': 'x', 'authorships': [me(2)]}]})
+            page = [work('Old', doi_a), work('Brand <i>New</i> Paper', '10.1/new'), work('A preprint', '10.48550/x', 'preprint')]
+            return json.dumps({'results': page, 'meta': {'next_cursor': None}})
+        with patch.object(S, 'get', side_effect=fake):
+            url, rows = S.openalex_rows('Jinzhen Wang', self.publications)
+        self.assertEqual(url, 'https://openalex.org/A1|A2')
+        self.assertIn('author.id%3AA1%7CA2', calls[-1])
+        self.assertEqual([r['title'] for r in rows], ['Old', 'Brand New Paper'])
         new, _ = S.find_new(rows, self.publications, [])
-        self.assertEqual([r['doi'] for r in new], ['10.1/new'])
-        with patch.object(S, 'get', side_effect=lambda url, accept='': pages['search'] if 'search' in url else other), patch.object(S.time, 'sleep'):
-            with self.assertRaises(S.ScholarBlocked): S.dblp_author('Jinzhen Wang', self.publications)
+        self.assertEqual([(r['doi'], r['venue']) for r in new], [('10.1/new', 'IEEE TPDS')])
+        with patch.object(S, 'get', return_value=json.dumps({'results': []})):
+            with self.assertRaises(S.ScholarBlocked): S.openalex_rows('Jinzhen Wang', self.publications)
 
     def test_crossref_lookup_by_doi(self):
         row = dict(title='Brand New Paper', authors='', venue='', year='2026', doi='10.1/new')

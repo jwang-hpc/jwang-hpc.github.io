@@ -60,8 +60,8 @@ workflow. It only runs on a schedule once it is on `main`.
 - Papers that could not be verified are listed (in the PR or in an issue) for
   manual entry. Add titles to `.github/scholar-ignore.txt` to stop proposing them.
 - Google Scholar blocks requests from GitHub's servers (HTTP 403). The script then
-  falls back to DBLP, picking the DBLP profile that shares the most DOIs with the
-  site. To use Google Scholar itself, add a `SERPAPI_KEY` repository secret
+  falls back to OpenAlex (open scholarly API), using the author record(s) listed
+  as Jinzhen Wang on DOIs already on the site. To use Google Scholar itself, add a `SERPAPI_KEY` repository secret
   (serpapi.com; the free tier is plenty for three runs a year).
 - Pull requests opened by the workflow need Settings → Actions → General →
   "Allow GitHub Actions to create and approve pull requests". Without it, the
