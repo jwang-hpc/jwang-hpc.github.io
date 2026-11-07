@@ -33,6 +33,7 @@ from bibliography import from_metadata  # noqa: E402
 PUBLICATIONS = ROOT / 'content' / 'publications.json'
 IGNORE = ROOT / '.github' / 'scholar-ignore.txt'
 USER_AGENT = 'Mozilla/5.0 (compatible; HPDi-website-scholar-sync/1.0; +https://github.com/jwang-hpc/jwang-hpc.github.io)'
+DBLP_HOSTS = ('dblp.org', 'dblp.uni-trier.de')
 PAPER_TYPES = {'journal-article', 'proceedings-article', 'book-chapter'}
 STOPWORDS = {'a', 'an', 'the', 'on', 'of', 'for', 'to', 'in', 'and', 'with', 'towards', 'toward', 'via', 'using', 'by', 'at', 'from', 'is', 'are'}
 
@@ -166,13 +167,33 @@ def dblp_records(xml_text):
 def dblp_author(name, publications):
     """Rows for the DBLP profile of `name` that shares the most DOIs with the site."""
     known = {p['doi'].lower() for p in publications if p.get('doi')}
-    hits = json.loads(get('https://dblp.org/search/author/api?' + urlencode(dict(q=name, format='json', h=20)), 'application/json'))
+    hits, problems = None, []
+    for host in DBLP_HOSTS:
+        body = ''
+        try:
+            body = get(f'https://{host}/search/author/api?' + urlencode(dict(q=name, format='json', h=20)), 'application/json')
+            hits = json.loads(body)
+            break
+        except (HTTPError, URLError, ValueError) as error:
+            snippet = ' '.join(body[:160].split())
+            problems.append(f'{host}: {error}' + (f' (response began: {snippet!r})' if snippet else ''))
+    if hits is None:
+        raise ScholarBlocked('DBLP author search failed: ' + '; '.join(problems))
     best = (0, None, [])
     for hit in hits['result']['hits'].get('hit', []):
         url = hit['info'].get('url', '')
         if '/pid/' not in url:
             continue
-        rows = dblp_records(get(url.replace('http://', 'https://') + '.xml', 'application/xml'))
+        path = urlparse(url).path
+        rows = None
+        for host in DBLP_HOSTS:
+            try:
+                rows = dblp_records(get(f'https://{host}{path}.xml', 'application/xml'))
+                break
+            except (HTTPError, URLError, ET.ParseError):
+                continue
+        if rows is None:
+            continue
         overlap = sum(1 for r in rows if r['doi'].lower() in known)
         if overlap > best[0]:
             best = (overlap, url, rows)
@@ -361,7 +382,7 @@ def main():
         print(f'::warning::{error} Falling back to DBLP. Add a SERPAPI_KEY repository secret to use Google Scholar via SerpAPI.', file=sys.stderr)
         try:
             url, rows = dblp_author(profile.get('name', 'Jinzhen Wang'), publications)
-        except (ScholarBlocked, HTTPError, URLError, ET.ParseError, KeyError) as dblp_error:
+        except (ScholarBlocked, HTTPError, URLError, ET.ParseError, KeyError, ValueError) as dblp_error:
             print(f'::error::DBLP fallback failed: {dblp_error}', file=sys.stderr)
             return 2
         source = f'DBLP ({url}), because Google Scholar blocked the request'
