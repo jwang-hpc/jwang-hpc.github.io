@@ -23,7 +23,7 @@
     "title": "Compressor-Aware Feature Analysis and Learning-Based Performance Prediction for Scientific Data Compression",
     "authors": "Zhenlu Qin, Qirui Tian, Lei Wu, Jinzhen Wang",
     "venue": "Journal of Artificial Intelligence for Automation",
-    "short": "Journal of Artificial Intelligence for Automation",
+    "short": "JAIA",
     "selected": false,
     "links": [
       {
@@ -53,7 +53,7 @@
     "title": "Rethinking the Potential of Layer Freezing for DNN Training Efficiency",
     "authors": "Chence Yang, Ningxi Cheng, Ci Zhang, Lei Lu, Qitao Tan, Sheng Li, Ao Li, Xulong Tang, Shaoyi Huang, Jinzhen Wang, Guoming Li, Jundong Li, Xiaoming Zhai, Jin Lu, Jinhui Wang, Geng Yuan",
     "venue": "Great Lakes Symposium on VLSI",
-    "short": "Great Lakes Symposium on VLSI",
+    "short": "GLSVLSI",
     "selected": false,
     "links": [
       {
@@ -181,8 +181,8 @@
     "year": 2024,
     "title": "A Generic Performance Metric for Scientific Data Compression",
     "authors": "Zhenlu Qin, Jessie Gu, Maggie Liu, Jinzhen Wang, Hongjian Zhu",
-    "venue": "IEEE International Conference on e-Science (e-Science)",
-    "short": "IEEE International Conference on e-Science (e-Science)",
+    "venue": "IEEE International Conference on e-Science",
+    "short": "e-Science",
     "selected": false,
     "links": [
       {
@@ -212,7 +212,7 @@
     "title": "GWLZ: A Group-wise Learning-based Lossy Compression Framework for Scientific Data",
     "authors": "Wenqi Jia, Sian Jin, Jinzhen Wang, Wei Niu, Dingwen Tao, Miao Yin",
     "venue": "Workshop on AI and Scientific Computing at Scale using Flexible Computing Infrastructures",
-    "short": "Workshop on AI and Scientific Computing at Scale using Flexible Computing Infrastructures",
+    "short": "FlexScience",
     "selected": false,
     "links": [
       {
