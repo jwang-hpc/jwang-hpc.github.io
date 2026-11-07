@@ -239,8 +239,8 @@ def clean_venue(container):
     """Strip edition/year noise from a container title; pull a trailing (ACRONYM)."""
     venue = re.sub(r'\s+', ' ', container).strip()
     short = ''
-    match = re.search(r'\s*\(([A-Z][A-Za-z0-9&\-\' ]{1,15})\)\s*$', venue)
-    if match:
+    match = re.search(r'\s*\(([A-Za-z][A-Za-z0-9&\-\' ]{1,15})\)\s*$', venue)
+    if match and re.search(r'[A-Z]', match.group(1)):
         short, venue = match.group(1).strip(), venue[:match.start()]
     venue = re.sub(r'^(Proceedings of (the )?)', '', venue, flags=re.I)
     venue = re.sub(r'^\d{4}\s+', '', venue)

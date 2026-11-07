@@ -79,6 +79,7 @@ class ScholarSyncTests(unittest.TestCase):
     def test_venue_cleanup_and_unique_ids(self):
         self.assertEqual(S.clean_venue('Proceedings of the 39th ACM International Conference on Supercomputing'), ('ACM International Conference on Supercomputing', ''))
         self.assertEqual(S.clean_venue('2023 IEEE 39th International Conference on Data Engineering (ICDE)'), ('IEEE International Conference on Data Engineering', 'ICDE'))
+        self.assertEqual(S.clean_venue('2024 IEEE 20th International Conference on e-Science (e-Science)'), ('IEEE International Conference on e-Science', 'e-Science'))
         taken = {'fast2026'}
         self.assertEqual(S.make_id('Towards Fast I/O', 2026, taken), 'fast2026b')
         self.assertEqual(S.scholar_user({'scholar': 'https://scholar.google.com/citations?user=otnPh2IAAAAJ&hl=en'}), 'otnPh2IAAAAJ')
