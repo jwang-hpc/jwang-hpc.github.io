@@ -1,6 +1,6 @@
 /* Shared design model: no DOM, dependencies, or executable user CSS. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.HPDiDesignModel=api;})(globalThis,function(){
-  const fonts={optima:"Optima,Candara,'Source Sans 3',Arial,sans-serif",palatino:"'TeX Gyre Pagella',Palatino,'Palatino Linotype',serif",'source-sans':"'Source Sans 3',Arial,sans-serif",inter:'Inter,Arial,sans-serif',plex:"'IBM Plex Sans',Arial,sans-serif",'source-serif':"'Source Serif 4',Georgia,serif"};
+  const fonts={optima:"Optima,Candara,'Source Sans 3',Arial,sans-serif",palatino:"'TeX Gyre Pagella',Palatino,'Palatino Linotype',serif",'source-sans':"'Source Sans 3',Arial,sans-serif",inter:'Inter,Arial,sans-serif',plex:"'IBM Plex Sans',Arial,sans-serif",'source-serif':"'Source Serif 4',Georgia,serif",'google-sans':"'Google Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",system:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif"};
   function contrast(a,b){
     const luminance=hex=>{const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
     const [low,high]=[luminance(a),luminance(b)].sort((a,b)=>a-b);return(high+.05)/(low+.05);
