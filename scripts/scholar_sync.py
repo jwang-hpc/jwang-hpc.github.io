@@ -41,10 +41,18 @@ class ScholarBlocked(RuntimeError):
     pass
 
 
-def get(url, accept='text/html'):
+def get(url, accept='text/html', attempts=5):
     request = Request(url, headers={'User-Agent': USER_AGENT, 'Accept': accept, 'Accept-Language': 'en'})
-    with urlopen(request, timeout=30) as response:
-        return response.read().decode('utf-8', 'replace')
+    for attempt in range(attempts):
+        try:
+            with urlopen(request, timeout=30) as response:
+                return response.read().decode('utf-8', 'replace')
+        except HTTPError as error:
+            # Back off on rate limits (Crossref, DBLP) but not on Scholar, which means a block.
+            if error.code not in (429, 503) or 'scholar.google' in url or attempt == attempts - 1:
+                raise
+            retry_after = error.headers.get('Retry-After', '')
+            time.sleep(min(int(retry_after), 60) if retry_after.isdigit() else 2 ** (attempt + 1))
 
 
 def normalize(title):
@@ -185,8 +193,13 @@ def is_owner(author):
     return author.get('family', '').strip().lower() == 'wang' and author.get('given', '').strip().lower().startswith('jinzhen')
 
 
-def crossref_match(row):
-    """Return Crossref metadata for a Scholar row, or (None, reason)."""
+def crossref_match(row, site_dois=frozenset()):
+    """Return Crossref metadata for a Scholar row, or (None, reason).
+
+    A looser match to a DOI already on the site is returned too, so the caller
+    can recognise a paper that Scholar lists under a different title.
+    """
+    time.sleep(1)  # stay well inside Crossref's public rate limit
     if row.get('doi'):
         try:
             items = [json.loads(get('https://api.crossref.org/works/' + quote(row['doi'], safe=''), 'application/json'))['message']]
@@ -202,6 +215,8 @@ def crossref_match(row):
         if item.get('type') not in PAPER_TYPES or not item.get('title'):
             continue
         score = similar(row['title'], item['title'][0])
+        if item['DOI'].lower() in site_dois and score >= .7:
+            return item, ''
         if score >= threshold and (best is None or score > best[0]):
             best = (score, item)
     if not best:
@@ -286,7 +301,7 @@ def run(rows, publications, lookup=crossref_match):
     added, manual = [], []
     for row in new:
         try:
-            item, reason = lookup(row)
+            item, reason = lookup(row, dois)
         except Exception as error:  # network or parse failure for one paper
             item, reason = None, f'Crossref lookup failed: {error}'
         if item and item['DOI'].lower() in dois:

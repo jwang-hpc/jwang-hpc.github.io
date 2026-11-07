@@ -43,7 +43,7 @@ class ScholarSyncTests(unittest.TestCase):
                 dict(title='A Workshop Poster', authors='', venue='', year='2026'),
                 dict(title='Same DOI, Different Title', authors='', venue='', year='2023')]
 
-        def lookup(row):
+        def lookup(row, site_dois):
             if row['title'].startswith('Fast'): return crossref_item('Fast Lossy Compression for Exascale Data'), ''
             if row['title'].startswith('Same'): return crossref_item('x', doi=existing['doi'].upper()), ''
             return None, 'no confident Crossref title match'
@@ -68,8 +68,10 @@ class ScholarSyncTests(unittest.TestCase):
                  ([crossref_item(row['title'], kind='posted-content')], 'no confident'),
                  ([crossref_item('Something Else Entirely')], 'no confident'),
                  ([crossref_item(row['title'], year=2019)], 'is from 2019')]
+        with patch.object(S, 'get', return_value=json.dumps({'message': {'items': [crossref_item('Fast Lossy Compression of Data', doi='10.1/onsite', owner=False)]}})), patch.object(S.time, 'sleep'):
+            self.assertEqual(S.crossref_match(row, {'10.1/onsite'})[0]['DOI'], '10.1/onsite')  # already on the site, title differs
         for items, expected in cases:
-            with self.subTest(expected=expected), patch.object(S, 'get', return_value=json.dumps({'message': {'items': items}})):
+            with self.subTest(expected=expected), patch.object(S.time, 'sleep'), patch.object(S, 'get', return_value=json.dumps({'message': {'items': items}})):
                 item, reason = S.crossref_match(row)
                 if expected is True: self.assertIsNotNone(item)
                 else: self.assertIsNone(item); self.assertIn(expected, reason)
@@ -106,10 +108,10 @@ class ScholarSyncTests(unittest.TestCase):
     def test_crossref_lookup_by_doi(self):
         row = dict(title='Brand New Paper', authors='', venue='', year='2026', doi='10.1/new')
         message = lambda **kw: json.dumps({'message': crossref_item('Brand New Paper:', doi='10.1/new', **kw)})
-        with patch.object(S, 'get', return_value=message()) as get:
+        with patch.object(S, 'get', return_value=message()) as get, patch.object(S.time, 'sleep'):
             item, _ = S.crossref_match(row)
         self.assertEqual(item['DOI'], '10.1/new'); self.assertIn('/works/10.1%2Fnew', get.call_args[0][0])
-        with patch.object(S, 'get', return_value=message(kind='posted-content')):
+        with patch.object(S, 'get', return_value=message(kind='posted-content')), patch.object(S.time, 'sleep'):
             self.assertIn('not a paper', S.crossref_match(row)[1])
 
 class DesignTokenTests(unittest.TestCase):
