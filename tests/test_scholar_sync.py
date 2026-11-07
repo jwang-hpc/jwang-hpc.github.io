@@ -82,6 +82,36 @@ class ScholarSyncTests(unittest.TestCase):
         self.assertEqual(S.scholar_user({'scholar': 'https://scholar.google.com/citations?user=otnPh2IAAAAJ&hl=en'}), 'otnPh2IAAAAJ')
 
 
+    def test_dblp_fallback_picks_profile_overlapping_site_dois(self):
+        doi_a, doi_b = self.publications[4]['doi'], self.publications[5]['doi']
+        def person(*pubs):
+            body = ''.join(f'<r><{kind} key="k{i}"{extra}><author pid="1">Jinzhen Wang</author><title>{title}.</title><year>2026</year>'
+                           f'<booktitle>ICDE</booktitle><ee>https://doi.org/{doi}</ee></{kind}></r>' for i, (kind, extra, title, doi) in enumerate(pubs))
+            return f'<dblpperson name="Jinzhen Wang">{body}</dblpperson>'
+        mine = person(('inproceedings', '', 'Old A', doi_a), ('article', '', 'Old B', doi_b),
+                      ('inproceedings', '', 'Brand New <i>Paper</i>', '10.1/new'), ('article', ' publtype="informal"', 'arXiv copy', '10.48550/x'))
+        other = person(('article', '', 'Unrelated', '10.9/zzz'))
+        pages = {'search': json.dumps({'result': {'hits': {'hit': [{'info': {'url': 'https://dblp.org/pid/00/other'}}, {'info': {'url': 'https://dblp.org/pid/11/mine'}}]}}}),
+                 'other': other, 'mine': mine}
+        fake = lambda url, accept='': pages['search' if 'search' in url else 'mine' if 'mine' in url else 'other']
+        with patch.object(S, 'get', side_effect=fake), patch.object(S.time, 'sleep'):
+            url, rows = S.dblp_author('Jinzhen Wang', self.publications)
+        self.assertEqual(url, 'https://dblp.org/pid/11/mine')
+        self.assertEqual([r['title'] for r in rows], ['Old A', 'Old B', 'Brand New Paper'])
+        new, _ = S.find_new(rows, self.publications, [])
+        self.assertEqual([r['doi'] for r in new], ['10.1/new'])
+        with patch.object(S, 'get', side_effect=lambda url, accept='': pages['search'] if 'search' in url else other), patch.object(S.time, 'sleep'):
+            with self.assertRaises(S.ScholarBlocked): S.dblp_author('Jinzhen Wang', self.publications)
+
+    def test_crossref_lookup_by_doi(self):
+        row = dict(title='Brand New Paper', authors='', venue='', year='2026', doi='10.1/new')
+        message = lambda **kw: json.dumps({'message': crossref_item('Brand New Paper:', doi='10.1/new', **kw)})
+        with patch.object(S, 'get', return_value=message()) as get:
+            item, _ = S.crossref_match(row)
+        self.assertEqual(item['DOI'], '10.1/new'); self.assertIn('/works/10.1%2Fnew', get.call_args[0][0])
+        with patch.object(S, 'get', return_value=message(kind='posted-content')):
+            self.assertIn('not a paper', S.crossref_match(row)[1])
+
 class DesignTokenTests(unittest.TestCase):
     def test_current_design_is_valid_and_uses_google_sans_headings(self):
         design = json.loads((ROOT / 'content/design.json').read_text())

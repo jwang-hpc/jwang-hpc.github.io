@@ -7,7 +7,9 @@ the title matches confidently and Jinzhen Wang is a listed author. Anything
 else is reported for manual entry; no publication facts are inferred.
 
 Scholar source: the public profile page, or SerpAPI's Google Scholar Author
-API when SERPAPI_KEY is set (more reliable from CI, which Scholar often blocks).
+API when SERPAPI_KEY is set. Scholar usually blocks requests from CI servers;
+the script then falls back to DBLP, choosing the DBLP author profile whose
+papers overlap most with the DOIs already on the site.
 """
 import argparse
 import difflib
@@ -16,11 +18,12 @@ import os
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +139,41 @@ def scholar_serpapi(user, key):
         start += 100
 
 
+def dblp_records(xml_text):
+    """Formal publications in a DBLP person XML file (CoRR/informal entries skipped)."""
+    rows = []
+    for record in ET.fromstring(xml_text).iter('r'):
+        for pub in record:
+            if pub.get('publtype') in ('informal', 'withdrawn', 'edited'):
+                continue
+            title = ' '.join(''.join(pub.find('title').itertext()).split()).rstrip('.') if pub.find('title') is not None else ''
+            dois = [e.text.split('doi.org/', 1)[1] for e in pub.findall('ee') if e.text and 'doi.org/' in e.text]
+            venue = pub.findtext('journal') or pub.findtext('booktitle') or ''
+            if title:
+                rows.append(dict(title=title, authors=', '.join(a.text or '' for a in pub.findall('author')), venue=venue,
+                                 year=pub.findtext('year') or '', doi=dois[0] if dois else ''))
+    return rows
+
+
+def dblp_author(name, publications):
+    """Rows for the DBLP profile of `name` that shares the most DOIs with the site."""
+    known = {p['doi'].lower() for p in publications if p.get('doi')}
+    hits = json.loads(get('https://dblp.org/search/author/api?' + urlencode(dict(q=name, format='json', h=20)), 'application/json'))
+    best = (0, None, [])
+    for hit in hits['result']['hits'].get('hit', []):
+        url = hit['info'].get('url', '')
+        if '/pid/' not in url:
+            continue
+        rows = dblp_records(get(url.replace('http://', 'https://') + '.xml', 'application/xml'))
+        overlap = sum(1 for r in rows if r['doi'].lower() in known)
+        if overlap > best[0]:
+            best = (overlap, url, rows)
+        time.sleep(1)
+    if best[0] < 2:
+        raise ScholarBlocked(f'No DBLP profile for {name} shares at least two DOIs with the site.')
+    return best[1], best[2]
+
+
 def scholar_user(profile):
     user = parse_qs(urlparse(profile.get('scholar', '')).query).get('user', [''])[0]
     if not re.fullmatch(r'[\w-]{12}', user):
@@ -149,17 +187,26 @@ def is_owner(author):
 
 def crossref_match(row):
     """Return Crossref metadata for a Scholar row, or (None, reason)."""
-    query = urlencode({'query.bibliographic': row['title'], 'rows': 5})
-    items = json.loads(get('https://api.crossref.org/works?' + query, 'application/json'))['message']['items']
+    if row.get('doi'):
+        try:
+            items = [json.loads(get('https://api.crossref.org/works/' + quote(row['doi'], safe=''), 'application/json'))['message']]
+        except HTTPError as error:
+            return None, f"DOI {row['doi']} is not registered with Crossref (HTTP {error.code})"
+        threshold = .85  # the DOI already identifies the paper; allow small title edits
+    else:
+        query = urlencode({'query.bibliographic': row['title'], 'rows': 5})
+        items = json.loads(get('https://api.crossref.org/works?' + query, 'application/json'))['message']['items']
+        threshold = .92
     best = None
     for item in items:
         if item.get('type') not in PAPER_TYPES or not item.get('title'):
             continue
         score = similar(row['title'], item['title'][0])
-        if score >= .92 and (best is None or score > best[0]):
+        if score >= threshold and (best is None or score > best[0]):
             best = (score, item)
     if not best:
-        return None, 'no confident Crossref title match'
+        kind = items[0].get('type') if row.get('doi') and items else ''
+        return None, f"Crossref lists DOI {row['doi']} as {kind}, not a paper" if kind and kind not in PAPER_TYPES else 'no confident Crossref title match'
     item = best[1]
     if not any(is_owner(a) for a in item.get('author', [])):
         return None, f"Crossref match ({item['DOI']}) does not list Jinzhen Wang"
@@ -225,7 +272,7 @@ def find_new(rows, publications, ignore):
     seen, new = set(), []
     for row in rows:
         key = normalize(row['title'])
-        if not key or key in seen or any(similar(row['title'], t) >= .9 for t in known):
+        if not key or key in seen or row.get('doi', '').lower() in dois or any(similar(row['title'], t) >= .9 for t in known):
             continue
         seen.add(key)
         new.append(row)
@@ -254,7 +301,7 @@ def run(rows, publications, lookup=crossref_match):
 
 
 def report(added, manual, source):
-    lines = [f'Checked the Google Scholar profile ({source}) for papers missing from `content/publications.json`.', '']
+    lines = [f'Checked {source} for papers missing from `content/publications.json`.', '']
     if added:
         lines += ['## Added from Crossref metadata', '',
                   'Please review each entry before merging, especially the **ID** (stays stable once published), the **venue abbreviation**, '
@@ -291,16 +338,21 @@ def main():
     profile = json.loads((ROOT / 'content' / 'profile.json').read_text())
     user = scholar_user(profile)
     key = os.environ.get('SERPAPI_KEY', '').strip()
-    source = 'SerpAPI' if key else 'scholar.google.com'
+    publications = json.loads(PUBLICATIONS.read_text())
+    source = 'the Google Scholar profile (via SerpAPI)' if key else 'the Google Scholar profile'
     try:
         rows = scholar_serpapi(user, key) if key else scholar_direct(user)
     except ScholarBlocked as error:
-        print(f'::error::{error} Add a SERPAPI_KEY repository secret to use SerpAPI instead.', file=sys.stderr)
-        return 2
+        print(f'::warning::{error} Falling back to DBLP. Add a SERPAPI_KEY repository secret to use Google Scholar via SerpAPI.', file=sys.stderr)
+        try:
+            url, rows = dblp_author(profile.get('name', 'Jinzhen Wang'), publications)
+        except (ScholarBlocked, HTTPError, URLError, ET.ParseError, KeyError) as dblp_error:
+            print(f'::error::DBLP fallback failed: {dblp_error}', file=sys.stderr)
+            return 2
+        source = f'DBLP ({url}), because Google Scholar blocked the request'
     if not rows:
-        print('::error::Google Scholar returned no publications.', file=sys.stderr)
+        print('::error::No publications were returned.', file=sys.stderr)
         return 2
-    publications = json.loads(PUBLICATIONS.read_text())
     added, manual = run(rows, publications)
     if added and not args.dry_run:
         PUBLICATIONS.write_text(json.dumps(insert(publications, [e for e, _ in added]), ensure_ascii=False, indent=2) + '\n')
